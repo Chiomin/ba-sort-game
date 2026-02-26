@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ブルーアーカイブ キャラクターソート</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="src/css/style.css?v=1.0.2">
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <h1>ブルーアーカイブ キャラクターソート</h1>
+            <p>好みの生徒を選んでランキングを作成します。</p>
+        </header>
+
+        <div id="start-view">
+            <!-- 上部ダッシュボード領域（大枠設定・ランキング件数などを並べる） -->
+            <div class="top-dashboard">
+                <div class="options-box target-settings">
+                    <h3>対象設定</h3>
+                    <div class="filter-controls">
+                        <label class="custom-checkbox"><input type="checkbox" id="opt-released" checked><span
+                                class="checkmark"></span> 実装済</label>
+                        <label class="custom-checkbox"><input type="checkbox" id="opt-npc" checked><span
+                                class="checkmark"></span> NPC</label>
+                        <label class="custom-checkbox"><input type="checkbox" id="opt-collab"><span
+                                class="checkmark"></span> コラボ</label>
+                    </div>
+                </div>
+
+                <div class="options-box rank-settings">
+                    <h3>ランキング表示</h3>
+                    <select id="opt-rank-count" class="custom-select">
+                        <option value="1">1位のみ</option>
+                        <option value="3">3位まで</option>
+                        <option value="5">5位まで</option>
+                        <option value="7">7位まで</option>
+                        <option value="10" selected>10位まで</option>
+                        <option value="15">15位まで</option>
+                        <option value="20">20位まで</option>
+                        <option value="30">30位まで</option>
+                        <option value="50">50位まで</option>
+                        <option value="100">100位まで</option>
+                        <option value="9999">すべて</option>
+                    </select>
+                </div>
+
+                <div class="options-box filter-actions-box">
+                    <h3>リスト操作</h3>
+                    <div class="filter-search-box">
+                        <input type="text" id="char-search-input" placeholder="キャラ名で検索...">
+                    </div>
+                    <div class="filter-actions flex-btn-group">
+                        <button type="button" class="tiny-btn" id="btn-filter-all-on">ALL
+                            ON</button>
+                        <button type="button" class="tiny-btn" id="btn-filter-all-off">ALL
+                            OFF</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 下部の大きなキャラクターリスト領域 -->
+            <div class="options-box filter-options-box full-width">
+                <div class="filter-container">
+                    <div class="filter-header-bar"
+                        style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <span class="filter-title">学園・部活別キャラクターリスト <span id="char-count-badge"
+                                class="count-badge"></span></span>
+                        <select id="opt-list-sort" class="custom-select"
+                            style="font-size: 14px; padding: 4px 8px; width: auto; min-width: 150px;">
+                            <option value="name_asc" selected>学園名前順 (昇順)</option>
+                            <option value="name_desc">学園名前順 (降順)</option>
+                            <option value="count_desc">所属人数が多い順</option>
+                            <option value="count_asc">所属人数が少ない順</option>
+                        </select>
+                    </div>
+                    <div class="filter-content">
+                        <div id="hierarchical-filters" class="hierarchical-grid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右下にフロート（固定）するスタートボタン -->
+            <div class="fixed-start-btn-container">
+                <button id="start-btn" class="primary-btn pulse-glow">
+                    <span class="btn-text">ソート開始</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="battle-view" class="hidden">
+            <div class="progress-info">
+                <span id="battle-num">1</span>回目 <br>
+                <span id="determined-rank-info">現在 0 位まで確定</span>
+            </div>
+            <div class="battle-area">
+                <div class="fighter" id="left-card">
+                    <!-- 衣装切り替え（タブ化） -->
+                    <div class="costume-selector tab-container" id="left-costume-tabs" style="visibility: hidden;">
+                    </div>
+
+                    <div class="img-wrapper">
+                        <img src="" alt="Left" id="left-img">
+                    </div>
+                    <div class="name-actions-container">
+                        <div class="name" id="left-name">Name A</div>
+                        <button class="expand-btn" id="btn-expand-left">🔍</button>
+                    </div>
+                </div>
+
+                <div class="fighter" id="right-card">
+                    <!-- 衣装切り替え（タブ化） -->
+                    <div class="costume-selector tab-container" id="right-costume-tabs" style="visibility: hidden;">
+                    </div>
+
+                    <div class="img-wrapper">
+                        <img src="" alt="Right" id="right-img">
+                    </div>
+                    <div class="name-actions-container">
+                        <div class="name" id="right-name">Name B</div>
+                        <button class="expand-btn" id="btn-expand-right">🔍</button>
+                    </div>
+                </div>
+            </div>
+            <div class="battle-controls">
+                <button class="battle-btn btn-undo" id="btn-undo"><span>一つ戻る</span></button>
+                <button class="battle-btn btn-skip" id="btn-skip"><span>スキップ</span></button>
+            </div>
+            <div class="exclude-controls">
+                <button class="exclude-btn" id="btn-exclude-left"><span>左を除外</span></button>
+                <button class="exclude-btn" id="btn-exclude-both"><span>両方除外</span></button>
+                <button class="exclude-btn" id="btn-exclude-right"><span>右を除外</span></button>
+            </div>
+        </div>
+
+        <div id="result-view" class="hidden">
+            <h2>ランキング結果</h2>
+            <div id="result-list"></div>
+            <div class="result-actions"
+                style="text-align: center; margin-top: 30px; display: flex; justify-content: center; gap: 30px;">
+                <button class="secondary-btn" id="share-btn"
+                    style="padding: 15px 40px; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; background: #000; color: #fff; border: 2px solid #000; display: flex; align-items: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path
+                            d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z">
+                        </path>
+                    </svg>
+                    <span>結果を投稿</span>
+                </button>
+                <button id="restart-btn" class="primary-btn"><span class="btn-text">もう一度やる</span></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="image-modal" class="modal hidden">
+        <span class="close-modal" id="close-image-modal">&times;</span>
+        <div id="swipe-hint" class="swipe-hint hidden">
+            <span>◀</span> スワイプで衣装切り替え <span>▶</span>
+        </div>
+        <img class="modal-content" id="modal-img">
+    </div>
+
+    <!-- Changelog Modal -->
+    <div id="changelog-modal" class="modal hidden">
+        <div class="modal-content changelog-box">
+            <span class="close-modal" id="close-changelog">&times;</span>
+            <h2>Changelog</h2>
+            <div class="changelog-entry">
+                <h3>v1.0</h3>
+                <p>リリースされました。<br>
+                    実装生徒及びそれらに対する衣装、一部のNPC生徒、そしてコラボキャラをソート可能です。
+                </p>
+                <p class="reference-notice">
+                    このサイトは東方キャラソート・MF(<a href="http://readalittle.net/sort/" target="_blank"
+                        rel="noopener noreferrer">http://readalittle.net/sort/</a>)を参考に作成されました!
+                </p>
+                <p class="ai-notice">※本アプリケーションは、開発の一部にAI生成を利用しています。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 権利表記 -->
+    <div id="copyright-notice" class="copyright-notice">
+        当サイトは非公式ファンメイドであり、使用されている画像・キャラクター名等の著作権は㈱NEXON Games及び㈱Yostarに帰属します。
+    </div>
+
+    <div id="version-info" class="version-badge">v1.0</div>
+
+    <script type="module" src="src/js/script.js?v=1.0.3"></script>
+</body>
+
+</html>

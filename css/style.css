@@ -1,0 +1,1588 @@
+:root {
+    --primary-color: #00a2e8;
+    /* 鮮やかなシアン */
+    --primary-hover: #0089c7;
+    --secondary-color: #334155;
+    /* スレート系のグレー（文字などの中間色用） */
+    --accent-color: #fca5a5;
+
+    /* 眩しさを抑えた、落ち着いたブルーグレー背景 */
+    --bg-color: #e2e8f0;
+    /* 少し深みのあるライトグレーブルー */
+
+    /* 真っ白を避けた、目に優しいオフホワイトのカード */
+    --card-bg: #f8fafc;
+
+    /* 深みのあるダークグレーの文字色 */
+    --text-color: #0f172a;
+
+    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 10px 25px -3px rgba(0, 162, 232, 0.15), 0 4px 6px -2px rgba(0, 162, 232, 0.05);
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-weight: 500;
+    background-color: var(--bg-color);
+    /* ドットパターンも少し落ち着かせた色味に */
+    background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+    color: var(--text-color);
+    margin: 0;
+    padding: 10px;
+    /* 縦幅節約のため20pxから10pxへ変更 */
+    box-sizing: border-box;
+}
+
+/* バトル中は中央配置にする */
+body.battle-mode {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    width: 1000px;
+    max-width: 95vw;
+    margin: 0 auto;
+    /* 背景色や枠線の代わりに、内部コンテンツでカード感を作るレイアウトへ変更 */
+    background: transparent;
+    padding: 10px;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 15px;
+    /* 30pxから15pxへ縮小して高さを節約 */
+}
+
+h1 {
+    color: var(--primary-color);
+    font-weight: 900;
+    font-size: 26px;
+    /* 32pxから少し縮小 */
+    margin-bottom: 5px;
+    letter-spacing: 1px;
+}
+
+/* --- アニメーション --- */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 画面切り替え時のスムーズな表示 */
+#start-view,
+#battle-view,
+#result-view {
+    animation: fadeIn 0.4s ease-out;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* --- スタート画面（オプション画面） --- */
+#start-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 20px;
+}
+
+/* 上部のダッシュボード（各種設定群） */
+.top-dashboard {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.top-dashboard .options-box {
+    flex: 1;
+    min-width: 250px;
+    margin-bottom: 0 !important;
+}
+
+.options-box.full-width {
+    width: 100%;
+    max-width: 1200px;
+    height: auto;
+}
+
+/* 画面幅が広い場合の右側フィルターコンテナ等のスタイル調整 */
+@media (min-width: 800px) {
+
+    /* 詳細フィルターのコンテナ */
+    .filter-container {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        /* 親枠からのハミ出しを一旦防ぐ */
+        min-height: 400px;
+    }
+
+    .filter-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .hierarchical-grid {
+        display: flex;
+        /* 横に並べる */
+        flex-direction: row;
+        gap: 15px;
+        overflow-x: auto;
+        /* 横スクロール */
+        overflow-y: hidden;
+        align-items: flex-start;
+        /* 上揃え */
+        height: auto;
+        padding: 0 15px 15px 15px;
+        /* スクロールバー用のゆとりと左右の端のゆとり */
+        min-height: 480px;
+
+        /* スクロールバーの見た目を改善（端を丸くする等） */
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+    }
+
+    .hierarchical-grid::-webkit-scrollbar {
+        height: 14px;
+    }
+
+    .hierarchical-grid::-webkit-scrollbar-track {
+        background: transparent;
+        border-radius: 8px;
+    }
+
+    .hierarchical-grid::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border: 4px solid rgba(255, 255, 255, 0.95);
+        border-radius: 8px;
+        background-clip: padding-box;
+    }
+
+    /* 学園の箱を横スクロールの要素にする */
+    .filter-academy-group {
+        flex-shrink: 0;
+        width: 320px;
+        /* PCでの学園パネル幅 */
+        display: flex;
+        flex-direction: column;
+        max-height: 100%;
+    }
+
+    /* 学園の中身（部活）は縦スクロール可能に */
+    .filter-academy-content {
+        overflow-y: auto;
+        flex-grow: 1;
+    }
+
+    /* 部活内のキャラリストのグリッドも少し広げる */
+    .char-grid {
+        grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    }
+}
+
+.options-box {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    width: 100%;
+    max-width: 600px;
+    border-radius: var(--border-radius-md);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    /* 影を柔らかく上品に */
+    overflow: hidden;
+    position: relative;
+    padding-bottom: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+/* 上部の青いアクセントバー */
+.options-box::before {
+    content: "";
+    display: block;
+    height: 6px;
+    width: 100%;
+    background-color: var(--primary-color);
+}
+
+.options-box h3 {
+    margin: 20px 20px 15px;
+    font-size: 18px;
+    color: var(--secondary-color);
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.options-box h3::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 18px;
+    background-color: var(--primary-color);
+    border-radius: 2px;
+}
+
+/* 対象設定などのコンテナ */
+.filter-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 0 20px;
+    margin-bottom: 10px;
+}
+
+/* ダッシュボード内のカスタムチェックボックス */
+.custom-checkbox {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    font-size: 14px;
+    /* オーバーフローしにくいようにやや縮小 */
+    font-weight: bold;
+    color: var(--text-color);
+    user-select: none;
+    padding: 8px 12px 8px 30px;
+    /* 左側にチェックマーク用の余白確保 */
+    margin: 0;
+    /* マージンは親の gap に任せる */
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    transition: all 0.2s;
+    box-sizing: border-box;
+    /* 枠の幅を安定させる */
+    width: 100%;
+    /* 長くても親サイズに収まるように */
+    max-width: fit-content;
+}
+
+.custom-checkbox:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.custom-checkbox input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    transform: translateY(-50%);
+    height: 16px;
+    width: 16px;
+    background-color: #fff;
+    border: 2px solid #cbd5e1;
+    border-radius: 4px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.custom-checkbox:hover input~.checkmark {
+    border-color: var(--primary-color);
+}
+
+.custom-checkbox input:checked~.checkmark {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.custom-checkbox input:checked~.checkmark:after {
+    display: block;
+}
+
+.custom-checkbox .checkmark:after {
+    left: 5px;
+    top: 1px;
+    width: 4px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* 旧型スタイル（.options-box内のlabel指定）は下位互換性のため削除または再定義 */
+
+/* セレクトボックスのカスタム */
+.custom-select {
+    margin: 5px 20px;
+    padding: 10px 15px;
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--secondary-color);
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    background-color: #f8fafc;
+    cursor: pointer;
+    outline: none;
+    width: calc(100% - 40px);
+    transition: all 0.2s;
+}
+
+.custom-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 162, 232, 0.2);
+}
+
+/* フレックスボタングループ */
+.flex-btn-group {
+    display: flex;
+    gap: 10px;
+    padding: 0 20px;
+    margin-bottom: 15px;
+}
+
+/* 右下固定→中央下部固定に変更されたスタートボタン */
+.fixed-start-btn-container {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, #40c4ff, var(--primary-color));
+    color: white;
+    border: 3px solid #ffffff;
+    padding: 15px 70px;
+    font-size: 24px;
+    font-weight: 900;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    transform: skewX(-10deg);
+    box-shadow: 0 8px 20px rgba(0, 162, 232, 0.4);
+    position: relative;
+    overflow: hidden;
+}
+
+.primary-btn .btn-text {
+    display: inline-block;
+    transform: skewX(10deg);
+    /* 親のスキューを打ち消す */
+    letter-spacing: 2px;
+    position: relative;
+    z-index: 2;
+}
+
+/* ボタンのホバーエフェクト（キラッと光る） */
+.primary-btn::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.5) 50%, rgba(255, 255, 255, 0) 100%);
+    transform: skewX(-20deg);
+    z-index: 1;
+    transition: none;
+}
+
+.primary-btn:hover {
+    transform: skewX(-10deg) scale(1.05);
+    box-shadow: 0 12px 25px rgba(0, 162, 232, 0.5);
+}
+
+.primary-btn:hover::after {
+    animation: shine 0.6s ease-out;
+}
+
+@keyframes shine {
+    0% {
+        left: -100%;
+    }
+
+    100% {
+        left: 200%;
+    }
+}
+
+/* バトル画面 */
+/* 進行状況パネル（「○回目」など）の洗練 */
+.progress-info {
+    text-align: center;
+    background: var(--card-bg);
+    padding: 8px 16px;
+    /* 少し縮小 */
+    border-radius: 20px;
+    border: 1px solid #cbd5e1;
+    display: inline-block;
+    margin: 0 auto 10px;
+    /* 下余白を20pxから10pxに */
+    font-weight: bold;
+    color: var(--secondary-color);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+#battle-num {
+    font-size: 20px;
+    color: var(--primary-color);
+    margin: 0 5px;
+}
+
+#determined-rank-info {
+    font-size: 14px;
+    color: #64748b;
+    margin-top: 4px;
+    display: block;
+}
+
+.battle-area {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 30px;
+    /* 余白を少し広げてスッキリと */
+    margin: 10px 0 15px;
+    /* 余白を削ってボタンを近くに */
+}
+
+.fighter {
+    width: 48%;
+    max-width: 550px;
+    min-width: 0;
+    /* Flexboxで中のスクロール要素が親枠を突き破って横に広がるのを防ぐための呪文 */
+    background: var(--card-bg);
+    /* 白背景のカード化 */
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: 15px;
+    /* 20pxから縮小 */
+    border: 3px solid transparent;
+    /* ホバー時に青く光るための準備 */
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+}
+
+.fighter:hover {
+    transform: translateY(-5px) scale(1.02);
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-md);
+}
+
+.img-wrapper {
+    width: 100%;
+    height: 380px;
+    /* 高すぎたため400pxから350pxへ縮小、その後要望により380pxに再拡大 */
+    padding: 20px;
+    /* キャラクターの上下左右に背景の余白を追加して窮屈さを緩和 */
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f1f5f9;
+    /* 【変更】完全な白や透過ではなく、淡いブルーグレーを敷く */
+    border-radius: 8px;
+    /* 内側の角丸 */
+    margin-bottom: 15px;
+    position: relative;
+    overflow: hidden;
+    /* 内側の角丸を適用するため */
+}
+
+/* 枠内の背景に薄い斜線パターンを追加して、よりブルアカっぽさと質感を持たせる（オプション） */
+.img-wrapper::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(45deg,
+            transparent,
+            transparent 10px,
+            rgba(255, 255, 255, 0.4) 10px,
+            rgba(255, 255, 255, 0.4) 20px);
+    pointer-events: none;
+}
+
+.img-wrapper img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+    /* 画像自体に薄い影をつけて立体感を */
+}
+
+.name-actions-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    /* 名前と拡大ボタンの間隔 */
+    margin-top: 10px;
+    position: relative;
+    min-height: 56px;
+    /* 名前が2行になっても他の要素がズレないよう高さを固定 */
+}
+
+.name {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--secondary-color);
+    letter-spacing: 1px;
+    margin: 0;
+    /* 長い名前のはみ出し・レイアウト崩れ防止 */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    /* Safari/古いChrome等への互換表記 */
+    line-clamp: 2;
+    /* 標準の2行打ち切り、以降「...」 */
+    overflow: hidden;
+    word-break: break-word;
+}
+
+/* バトル操作ボタン */
+.battle-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 5px;
+    /* 次のボタンとの隙間を縮小 */
+    flex-wrap: wrap;
+}
+
+/* バトルと除外ボタンの共通ベースクラス（斜めデザイン） */
+.battle-btn,
+.exclude-btn {
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-weight: bold;
+    min-width: 120px;
+    padding: 12px 24px;
+    transition: all 0.2s;
+    transform: skewX(-10deg);
+    position: relative;
+    overflow: hidden;
+}
+
+/* ボタン内のテキストの傾きを戻す */
+.battle-btn span,
+.exclude-btn span {
+    display: inline-block;
+    transform: skewX(10deg);
+}
+
+.battle-btn:hover,
+.exclude-btn:hover {
+    transform: skewX(-10deg) scale(1.02);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* 個別ボタンカラー */
+.btn-undo {
+    background: linear-gradient(135deg, #94a3b8, #64748b);
+    border: 2px solid #ffffff;
+}
+
+.btn-skip {
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    /* 緑緑しいスキップ */
+    border: 2px solid #ffffff;
+}
+
+/* 除外ボタンエリア */
+.exclude-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 5px;
+    /* 上との隙間を縮小 */
+    flex-wrap: wrap;
+}
+
+.exclude-btn {
+    background: #ffffff;
+    color: var(--secondary-color);
+    border: 2px solid #cbd5e1;
+    font-size: 14px;
+    min-width: 100px;
+    padding: 8px 16px;
+}
+
+.exclude-btn span {
+    color: var(--secondary-color);
+}
+
+.exclude-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+/* src/css/style.css に追記 */
+
+/* --- 衣装切り替え タブ全体のエリア --- */
+.tab-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    /* 縦の中央揃え */
+    gap: 8px;
+    margin-bottom: 8px;
+    height: 56px;
+    /* スクロールバーを含めて高さを完全固定（少し広く） */
+    box-sizing: border-box;
+    flex-wrap: nowrap;
+    /* 縦に増えないようにする */
+    overflow-x: auto;
+    /* 横スクロール対応 */
+    overflow-y: hidden;
+    /* 縦ははみ出させない */
+    width: 100%;
+    padding: 0 4px;
+    /* 横の余白のみ。縦は固定するため不要 */
+    scrollbar-width: auto;
+    /* Firefoxでも少し太く押しやすく */
+    scrollbar-color: #94a3b8 transparent;
+    /* 色も少し濃くして見やすく */
+    -webkit-overflow-scrolling: touch;
+    /* スマホで滑らかにスクロール */
+}
+
+/* Chrome等のスクロールバーを細く綺麗にする */
+.tab-container::-webkit-scrollbar {
+    height: 10px;
+    /* スクロールバーをさらに太くして押しやすく */
+}
+
+.tab-container::-webkit-scrollbar-thumb {
+    background-color: #94a3b8;
+    /* スクロールバー自体を少し濃くして視認性アップ */
+    border-radius: 5px;
+}
+
+/* 個別のタブボタン */
+.tab-btn {
+    flex-shrink: 0;
+    /* スクロール時ボタンが潰れないように */
+    white-space: nowrap;
+    /* 文字の折り返しを防ぐ */
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: var(--secondary-color);
+    border-radius: 20px;
+    padding: 0 16px;
+    height: 34px;
+    /* タブの高さを少し大きくして押しやすく */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    font-size: 14px;
+    /* 文字も少し大きく */
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    background-color: #f1f5f9;
+}
+
+/* 選択中のタブ */
+.tab-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    pointer-events: none;
+    /* 見切れの原因だった scale とはみ出る shadow を削除 */
+}
+
+/* スマホ対応（レスポンシブ） */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .battle-area {
+        /* スマホでも横並びを維持 */
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .fighter {
+        /* 2カラムに収まるように幅調整 */
+        width: 49%;
+        margin: 0;
+    }
+
+    .img-wrapper {
+        height: 240px;
+        /* 余白を追加したため高さを少し広めに調整 */
+        padding: 10px;
+    }
+
+    /* 横長画像の縮小防止と縦長キャラの足切れ対策 */
+    .img-wrapper img {
+        object-fit: contain;
+        /* coverを使わないため、縦長キャラの足や頭が切れることはありません */
+        width: auto;
+        height: 100%;
+        /* 高さを優先して枠にピッタリ収めます */
+        max-width: 800px;
+        /* ご要望通り、横に長すぎる画像は幅800pxを上限として縮小（全体表示）させます */
+        flex-shrink: 0;
+        /* 枠からはみ出た左右だけが切り抜かれる（クロップされる）ようになります */
+        object-position: center center;
+    }
+
+    /* スマホでは拡大ボタンが顔や絵に被りにくいよう小型化 */
+    .expand-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+        border-width: 1px;
+    }
+
+    /* スマホ用に名前の大きさを調整 */
+    .name {
+        font-size: 15px;
+        /* スマホなら文字を少し小さくして行に収めやすく */
+    }
+
+    /* 衣装選択ボックスを大きく（1.2倍相当） */
+    .costume-selector {
+        transform: scale(1.1);
+        /* 全体を少し大きく */
+        transform-origin: center top;
+        margin-bottom: 10px;
+    }
+
+    .costume-arrow {
+        padding: 8px 12px;
+        /* タップしやすいように */
+    }
+
+    /* バトル時のスマホ向け余白確保（固定ボタン用） */
+    body.battle-mode {
+        padding-bottom: 110px;
+    }
+
+    /* 操作ボタンを下部に完全固定（Sticky Footer） */
+    .battle-controls {
+        position: fixed;
+        bottom: 50px;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(5px);
+        margin: 0;
+        padding: 8px 10px;
+        border-top: 1px solid #e2e8f0;
+        gap: 5px;
+    }
+
+    .exclude-controls {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(5px);
+        margin: 0;
+        padding: 5px 10px 15px;
+        /* 下部に少し余裕を持たせる */
+        gap: 5px;
+    }
+
+    .battle-btn {
+        flex: 1;
+        padding: 10px 5px;
+        /* 文字がはみ出ないよう調整 */
+        min-width: auto;
+        font-size: 14px;
+    }
+
+    .exclude-btn {
+        flex: 1;
+        font-size: 12px;
+        padding: 6px 5px;
+        min-width: auto;
+    }
+
+    /* スマホ用にスタートボタンのサイズと文字改行を調整 */
+    .primary-btn {
+        padding: 12px 40px;
+        /* 余白を減らす */
+        font-size: 18px;
+        /* 文字サイズを下げて行に収める */
+        white-space: nowrap;
+        /* 文字の改行を絶対に防ぐ */
+    }
+}
+
+
+
+/* 結果画面 */
+
+/* --- リザルト画面の階層デザイン --- */
+
+.result-tier-section {
+    margin-bottom: 40px;
+    padding-bottom: 30px;
+    border-bottom: 2px dashed #cbd5e1;
+}
+
+.result-tier-section:last-child {
+    border-bottom: none;
+}
+
+.result-tier-section h3 {
+    text-align: center;
+    color: var(--secondary-color);
+    font-size: 26px;
+    font-weight: 900;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+}
+
+/* TOP3専用少し大きく */
+.top-tier .result-card {
+    width: 250px;
+}
+
+.top-tier .result-img-wrapper {
+    height: 240px;
+}
+
+/* カードを並べる親枠 */
+.result-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 25px;
+    margin-top: 20px;
+}
+
+/* 個別のキャラカード */
+.result-card {
+    background: var(--card-bg);
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    width: 200px;
+    /* デフォルトサイズ */
+    padding: 15px;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.result-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-color);
+}
+
+/* 順位バッジ */
+.rank-badge {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    width: 40px;
+    height: 40px;
+    background-color: var(--secondary-color);
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+}
+
+/* 金・銀・銅（クラス指定） */
+.rank-1 {
+    background: linear-gradient(135deg, #fde68a, #d97706);
+    color: #fff;
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    top: -15px;
+    left: -15px;
+    border-color: #fff;
+}
+
+.rank-2 {
+    background: linear-gradient(135deg, #e2e8f0, #64748b);
+    color: #fff;
+    width: 45px;
+    height: 45px;
+    font-size: 20px;
+    top: -12px;
+    left: -12px;
+    border-color: #fff;
+}
+
+.rank-3 {
+    background: linear-gradient(135deg, #ffb088, #c45a21);
+    /* ブロンズ（銅）色 */
+    color: #fff;
+    width: 45px;
+    height: 45px;
+    font-size: 20px;
+    top: -12px;
+    left: -12px;
+    border-color: #fff;
+}
+
+.rank-other {
+    background-color: var(--primary-color);
+}
+
+/* 画像エリア */
+.result-img-wrapper {
+    width: 100%;
+    height: 200px;
+    /* ★ここで高さを指定（50pxの4倍） */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.result-img-wrapper img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    /* アスペクト比を維持して枠に収める */
+}
+
+.result-name {
+    margin-top: 10px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--text-color);
+    line-height: 1.4;
+}
+
+/* 拡大機能（モーダル） */
+.expand-btn {
+    background-color: #ffffff;
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+    /* 大きさが潰れないように */
+}
+
+.expand-btn:hover {
+    background-color: #ffffff;
+    transform: scale(1.1);
+}
+
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background-color: transparent;
+    padding: 0;
+    box-sizing: border-box;
+    max-width: 90%;
+    /* 画面幅の90%横幅を上限とする */
+    height: 90vh;
+    /* 高さを画面の90%に固定（これで足や頭が縦に切れることを完全に防ぎます） */
+    width: auto;
+    /* 幅は画像の比率に従いますが、max-width: 90% を超えた分だけがクロップされます */
+    object-fit: cover;
+    /* 横方向だけのクロップとして機能します */
+    object-position: center top;
+    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8));
+    animation: zoomIn 0.2s ease-out;
+}
+
+.close-modal {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: #fff;
+    background-color: rgba(0, 0, 0, 0.6);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 35px;
+    font-weight: bold;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    z-index: 1001;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+    background-color: rgba(255, 80, 80, 0.9);
+    transform: scale(1.1);
+    text-decoration: none;
+}
+
+@keyframes zoomIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* --- スマホ用スワイプ関連UI --- */
+
+.swipe-hint {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 1002;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: bounceHorizontal 2s infinite;
+}
+
+/* PC等、タッチ操作がメインでないデバイスではスワイプヒントを隠す */
+@media (pointer: fine) {
+    .swipe-hint {
+        display: none !important;
+    }
+}
+
+.swipe-hint span {
+    color: var(--primary-color);
+}
+
+@keyframes bounceHorizontal {
+
+    0%,
+    100% {
+        transform: translateX(-50%);
+    }
+
+    50% {
+        transform: translateX(-50%) scale(1.05);
+    }
+}
+
+/* 画像切り替え時のスワイプアニメーション */
+.swipe-animate-left {
+    animation: slideLeft 0.3s ease-out;
+}
+
+.swipe-animate-right {
+    animation: slideRight 0.3s ease-out;
+}
+
+@keyframes slideLeft {
+    0% {
+        transform: translateX(50px);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideRight {
+    0% {
+        transform: translateX(-50px);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* --- 詳細フィルター用UI --- */
+.filter-options-box {
+    padding-bottom: 10px;
+}
+
+.filter-accordion {
+    margin: 10px 20px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.filter-accordion summary {
+    padding: 12px 15px;
+    background-color: #f1f5f9;
+    font-weight: bold;
+    color: var(--secondary-color);
+    cursor: pointer;
+    list-style: none;
+    /* デフォルトの三角形を消す（一部ブラウザ） */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s;
+}
+
+.filter-accordion summary::-webkit-details-marker {
+    display: none;
+}
+
+.filter-accordion summary::after {
+    content: "▼";
+    font-size: 12px;
+    color: var(--primary-color);
+    transition: transform 0.3s;
+}
+
+.filter-accordion[open] summary::after {
+    transform: rotate(180deg);
+}
+
+.filter-accordion summary:hover {
+    background-color: #e2e8f0;
+}
+
+.count-badge {
+    background: var(--primary-color);
+    color: white;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 10px;
+    font-weight: normal;
+}
+
+.accordion-content {
+    padding: 15px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.tiny-btn {
+    padding: 4px 12px;
+    font-size: 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.tiny-btn:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+.filter-search-box {
+    margin-bottom: 15px;
+    padding: 0 15px;
+}
+
+#char-search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+/* --- 階層フィルターUIデザイン --- */
+/* (PCレイアウトは上部のメディアクエリで上書きされます) */
+.hierarchical-grid {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0 15px 15px;
+    cursor: grab;
+    /* ドラッグできることを示すカーソル */
+}
+
+/* ドラッグ中にカーソルを変更し、文字選択を無効化する */
+.hierarchical-grid.active {
+    cursor: grabbing;
+    user-select: none;
+}
+
+.hierarchical-grid::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.hierarchical-grid::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+.hierarchical-grid::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.hierarchical-grid::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
+}
+
+/* カスタムコンテナのヘッダー */
+.filter-header-bar {
+    padding: 12px 15px;
+    background-color: #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 10px;
+}
+
+.filter-title {
+    font-weight: bold;
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+}
+
+.filter-header-bar .filter-actions {
+    margin-bottom: 0;
+}
+
+.filter-academy-group {
+    margin-bottom: 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.filter-academy-header {
+    background: #e2e8f0;
+    padding: 8px 10px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.filter-academy-header label,
+.filter-club-header label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-grow: 1;
+}
+
+/* --- 折りたたみ用の開閉ボタン --- */
+.toggle-collapse-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 16px;
+    color: var(--primary-color);
+    transition: transform 0.3s, background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    /* 大幅に拡大して押しやすく */
+    height: 40px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.toggle-collapse-btn:hover {
+    background: rgba(0, 162, 232, 0.15);
+}
+
+.is-collapsed .toggle-collapse-btn {
+    transform: rotate(-90deg);
+}
+
+/* グループが折りたたまれた時の中身を隠す */
+.filter-academy-group.is-collapsed .filter-academy-content {
+    display: none !important;
+}
+
+.filter-club-group.is-collapsed .char-grid {
+    display: none !important;
+}
+
+/* 折りたたまれたときの不要な余白を消す */
+.filter-academy-group.is-collapsed {
+    padding-bottom: 0px;
+    height: auto;
+}
+
+.filter-academy-group:not(.is-collapsed) {
+    height: 100%;
+}
+
+.filter-club-group.is-collapsed {
+    margin-bottom: 5px;
+}
+
+.filter-academy-content {
+    background: #fff;
+    padding: 10px;
+}
+
+.filter-club-group {
+    margin-bottom: 10px;
+}
+
+.filter-club-group:last-child {
+    margin-bottom: 0;
+}
+
+.filter-club-header {
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--secondary-color);
+    margin-bottom: 5px;
+    padding-bottom: 3px;
+    border-bottom: 1px dashed #cbd5e1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.char-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 6px;
+    padding-left: 10px;
+}
+
+/* 文字被りの原因だった char-grid label の上書きパディングを解除・再設定 */
+.char-grid .custom-checkbox {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+    padding: 6px 8px 6px 28px;
+    /* チェックマーク用28px確保 */
+    max-width: 100%;
+}
+
+.char-name-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.char-grid input[type="checkbox"] {
+    accent-color: var(--primary-color);
+    margin: 0;
+}
+
+/* 無効化（グレーアウト）されたラベルのスタイル */
+.disabled-label {
+    opacity: 0.4;
+    cursor: not-allowed !important;
+    background-color: transparent !important;
+}
+
+.disabled-label input[type="checkbox"] {
+    cursor: not-allowed;
+}
+
+/* -----------------------------------
+   バージョン情報とChangelog
+-------------------------------------- */
+.version-badge {
+    position: fixed;
+    bottom: 5px;
+    right: 15px;
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    z-index: 1000;
+    transition: color 0.2s;
+    user-select: none;
+}
+
+.version-badge:hover {
+    color: rgba(0, 0, 0, 0.8);
+}
+
+.changelog-box {
+    background: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    margin: 10% auto;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    text-align: left;
+    /* imgの時のように画面いっぱいにならないようオーバーライド */
+    display: block;
+}
+
+.changelog-box h2 {
+    margin-top: 0;
+    color: var(--primary-color);
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
+.changelog-box .changelog-entry h3 {
+    color: #333;
+    margin-top: 20px;
+    font-size: 1.2em;
+}
+
+.changelog-box .changelog-entry p {
+    line-height: 1.6;
+    color: #444;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.changelog-box .ai-notice {
+    margin-top: 20px !important;
+    font-size: 12px !important;
+    color: #888 !important;
+}
+
+.changelog-box .changelog-entry p.reference-notice {
+    color: #e11d48;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.changelog-box .changelog-entry p.reference-notice a {
+    color: #0066cc;
+    /* URLを青色に指定 */
+    text-decoration: underline;
+    transition: opacity 0.2s;
+}
+
+.changelog-box .changelog-entry p.reference-notice a:hover {
+    opacity: 0.7;
+}
+
+#close-changelog {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 28px;
+    color: #999;
+    cursor: pointer;
+    font-weight: bold;
+    line-height: 1;
+}
+
+#close-changelog:hover {
+    color: #333;
+}
+
+.copyright-notice {
+    position: fixed;
+    bottom: 5px;
+    left: 10px;
+    font-size: 11px;
+    color: rgba(0, 0, 0, 0.35);
+    z-index: 999;
+    pointer-events: none;
+    /* クリック操作の邪魔にならないようにする */
+    user-select: none;
+}

@@ -1586,3 +1586,171 @@ h1 {
     /* クリック操作の邪魔にならないようにする */
     user-select: none;
 }
+
+/* -----------------------------------
+   結果画面ボタン・アクション領域
+----------------------------------- */
+.result-actions {
+    text-align: center;
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+}
+
+.share-btn {
+    padding: 15px 40px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #000;
+    color: #fff;
+    border: 2px solid #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.restart-btn {
+    padding: 15px 40px;
+    font-size: 18px;
+}
+
+/* スマホでの基本配置（固定解除し最下部に表示） */
+@media (max-width: 768px) {
+
+    .version-badge,
+    .copyright-notice {
+        position: static;
+        text-align: center;
+        padding: 5px;
+        font-size: 11px;
+    }
+
+    .copyright-notice {
+        margin-top: 20px;
+    }
+
+    /* ソート開始ボタンの固定を解除し、リストの一番下に置く */
+    .fixed-start-btn-container {
+        position: static;
+        transform: none;
+        margin: 20px auto 10px;
+        text-align: center;
+    }
+
+    /* バトル画面時にそれらを非表示にする設定 */
+    body.battle-mode .copyright-notice,
+    body.battle-mode .version-badge {
+        display: none !important;
+    }
+
+    /* リザルト画面のボタン群のスマホ対応 */
+    .result-actions {
+        flex-direction: column;
+        gap: 15px;
+        width: 100%;
+        padding: 0 20px;
+        box-sizing: border-box;
+    }
+
+    .share-btn,
+    .restart-btn {
+        width: 100%;
+        max-width: 300px;
+        margin: 0 auto;
+        padding: 12px 20px;
+        font-size: 16px;
+    }
+}
+
+/* -----------------------------------
+   トランジション（スライドアニメーション）
+----------------------------------- */
+.img-wrapper img {
+    /* 改善案1: 弾むような、ポップで心地よいイージング（Back Ease Out に近い）に変更 */
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out;
+}
+
+/* 改善案2: クリック時の押し込みエフェクト */
+.card-push {
+    transform: scale(0.9) translateY(10px) !important;
+    /* グッと下に沈み込む */
+    filter: brightness(0.8);
+    /* 少し暗くして押されている感を出す */
+    transition: transform 0.1s ease-out, filter 0.1s ease-out !important;
+}
+
+/* 改善案4: 勝負の結果に応じた退場アニメーション */
+
+/* 勝者（選ばれた方）の退場： 選ばれたことを祝うように上にフワッと浮いて消える */
+.card-leave-winner {
+    transform: translateY(-40px) scale(1.05);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s ease-in, opacity 0.3s ease-in;
+}
+
+/* 敗者（選ばれなかった方）の退場： 力尽きて下にスッと落ちて消える */
+.card-leave-loser {
+    transform: translateY(60px) scale(0.9);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s ease-in, opacity 0.3s ease-in;
+}
+
+/* 引き分け（両方）の退場： 仲良く横か下にスライドして消える（従来通りに近い） */
+.card-leave-tie {
+    transform: translateY(40px) scale(0.95);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s ease-in, opacity 0.3s ease-in;
+}
+
+
+/* スライドインして現れる初期状態（ここから元の状態＝transform: none に戻る） */
+/* 左右からフワッと現れる（従来通りだがイージングが変わるのでスナップが効く） */
+.card-slide-in-prepare-left {
+    transform: translateX(60px) scale(0.95);
+    opacity: 0;
+}
+
+.card-slide-in-prepare-right {
+    transform: translateX(-60px) scale(0.95);
+    opacity: 0;
+}
+
+.card-slide-in-prepare-bottom {
+    transform: translateY(-40px) scale(0.95);
+    opacity: 0;
+}
+
+/* -----------------------------------
+   デバッグ用ログパネル
+----------------------------------- */
+#debug-log {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 300px;
+    max-height: 400px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #0f0;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 10px;
+    overflow-y: auto;
+    z-index: 10000;
+    border: 1px solid #333;
+    border-radius: 4px;
+    pointer-events: auto;
+    /* スクロール操作を可能にする */
+}
+
+#debug-log p {
+    margin: 0 0 4px 0;
+    line-height: 1.3;
+}

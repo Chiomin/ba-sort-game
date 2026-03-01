@@ -33,6 +33,11 @@ class SortNode {
         this.parent = null;
         this.children = [];
         this.isTie = false; // 親と引き分け（同着）かどうか
+
+        // 途中結果のランキング精度向上のための戦績データ
+        this.battles = 0;
+        this.wins = 0;
+        this.ties = 0;
     }
 
     // 自分の下のノードを全て削除する（Undo用）
@@ -106,28 +111,61 @@ class SortNode {
         return null;
     }
 
-    // 結果表示用に、順位順に並んだリスト（フラットな配列）を取得する
-    // targetRank: 取得したい順位の上限
+    // 結果表示用に、現在の順位（深さ）順に並んだリストを取得する
+    // 途中経過も表示できるよう、ツリー全体を探索する
     getResultList(targetRank, result = []) {
-        // 自分自身をリストに追加（ルート以外）
-        if (this.character) {
-            result.push({
-                character: this.character,
-                rank: this.getRank(),
-                isTie: this.isTie
+        // ツリー内の全キャラクターを探索する内部関数
+        const traverse = (node) => {
+            if (node.character) {
+                result.push({
+                    character: node.character,
+                    rank: node.getRank(),
+                    isTie: node.isTie
+                });
+            }
+            node.children.forEach(child => traverse(child));
+        };
+
+        if (!this.parent) {
+            // Rootから呼ばれた場合は全探索してソートする
+            traverse(this);
+            // ソートアルゴリズムの改善: 
+            // 1. ツリーの深さ(rank)が小さい（上位）ほど偉い
+            // 2. ランクが同じなら「勝率 (勝数 / 試合数)」が高いほうが偉い
+            // 3. 勝率も同じなら「単純な勝利数」が多いほうが偉い
+            result.sort((a, b) => {
+                if (a.rank !== b.rank) {
+                    return a.rank - b.rank; // 昇順 (小さい方が上位)
+                }
+
+                const aNode = a.character ? a.character.__nodeRef : null; // 一時的な参照用
+                const bNode = b.character ? b.character.__nodeRef : null;
+
+                const aBattles = aNode ? aNode.battles : 0;
+                const bBattles = bNode ? bNode.battles : 0;
+                const aWins = aNode ? aNode.wins : 0;
+                const bWins = bNode ? bNode.wins : 0;
+
+                const aWinRate = aBattles > 0 ? (aWins / aBattles) : 0;
+                const bWinRate = bBattles > 0 ? (bWins / bBattles) : 0;
+
+                if (aWinRate !== bWinRate) {
+                    return bWinRate - aWinRate; // 降順 (大きい方が上位)
+                }
+
+                return bWins - aWins; // 降順
             });
-        }
 
-        // 取得数が足りていれば終了
-        if (result.length >= targetRank) {
-            return result;
-        }
+            // 参照用プロパティのお掃除
+            result.forEach(item => {
+                if (item.character && item.character.__nodeRef) {
+                    delete item.character.__nodeRef;
+                }
+            });
 
-        // 順位順（ツリーの上から順）に探索
-        // トーナメントソート完了後は、基本的に勝者が親となる一本の鎖（Root -> 1位 -> 2位...）になる
-        if (this.children.length > 0) {
-            // ソート完了状態では children[0] が次の順位の勝者
-            this.children[0].getResultList(targetRank, result);
+            // 表示上限を超えないように切り出す
+            // 同率順位が多数いる場合は targetRank を超えてしまうこともあるが、単純にスライスする
+            return result.slice(0, targetRank);
         }
 
         return result;
@@ -140,7 +178,7 @@ class SortNode {
             if (this.isTie) {
                 return this.parent.getRank();
             }
-            return this.parent.getLevel() + 1;
+            return this.parent.getRank() + 1;
         }
         return 0;
     }
@@ -177,6 +215,7 @@ const sortEngine = {
     initialList: [],       // 初期化時のキャラリスト（順番含む）
     history: [],           // 操作履歴 ['left', 'right', 'tie', 'exclude:left', ...]
     initialSeed: 0,        // RNGの初期シード
+    imageCache: [],        // プリロードした画像を保持してガベージコレクションを防ぐ配列
 
     // 衣装のインデックス管理 [nodeAのindex, nodeBのindex]
     currentCostumeIndices: { left: 0, right: 0 },
@@ -634,55 +673,66 @@ const sortEngine = {
         this.currentQuestion = pair;
         const [nodeA, nodeB] = pair;
 
-        // 画面表示を更新
-        this.updateFighterView(nodeA.character, nodeB.character);
+        // まず最初に、決定したペアの画像をプリロード（バックグラウンド読込）開始する
+        this.preloadNext();
 
-        // バックグラウンドで少し遅延させてプリロードを実行するヘルパー
-        this.preloadNext(); // askメソッド内で呼び出す
+        // 続けて画面表示を更新（ここで画像のsrcが切り替わる）
+        this.updateFighterView(nodeA.character, nodeB.character);
     },
 
     preloadNext: function () {
-        // メインスレッド（UI描画）をブロックしないように非同期で実行
-        setTimeout(() => {
-            if (!this.currentQuestion) return;
-            const [nodeA, nodeB] = this.currentQuestion;
+        if (!this.currentQuestion) return;
+        const [nodeA, nodeB] = this.currentQuestion;
 
-            // 1. 現在表示中のキャラの別衣装をすべてプリロード
-            this.preloadCharacterImages(nodeA.character);
-            this.preloadCharacterImages(nodeB.character);
-
-            // 2. 「左を選んだ場合」の未来をシミュレートして次キャラをプリロード
-            this.simulateAndPreload('left');
-            // 3. 「右を選んだ場合」
-            this.simulateAndPreload('right');
-            // 4. 「引き分けの場合」
-            this.simulateAndPreload('tie');
-        }, 100);
+        // 現在表示されるキャラの全衣装を即座にプリロード開始（遅延なし）
+        this.preloadCharacterImages(nodeA.character);
+        this.preloadCharacterImages(nodeB.character);
     },
 
-    // 仮想的に選択を行い、次のペアの画像をプリロードする
-    simulateAndPreload: function (choice) {
-        if (!this.currentQuestion) return;
-        const [leftNode, rightNode] = this.currentQuestion;
+    // 一度プリロードした画像のURLを記録するSet
+    preloadedUrls: new Set(),
+    preloadContainer: null,
 
-        // 安全なプリロード方式（ツリー破壊を避ける）
-        // 未比較ノード（childrenが0）を探索して画像を先読みする
-        const upcomingNodes = [];
-        const findUpcoming = (node) => {
-            if (upcomingNodes.length >= 4) return; // 次の4キャラ分くらい読めば十分
-            if (node.children.length === 0 && node !== leftNode && node !== rightNode) {
-                if (node.character) upcomingNodes.push(node.character);
-            }
-            node.children.forEach(child => findUpcoming(child));
-        };
-        findUpcoming(this.rootNode);
+    // デバッグログ出力用関数
+    addDebugLog: function (message) {
+        const debugLog = document.getElementById('debug-log');
+        if (!debugLog) return;
 
-        upcomingNodes.forEach(char => {
-            if (char && char.images && char.images.length > 0) {
-                // とりあえずデフォルト衣装だけ先読み
-                const img = new Image();
-                img.src = `src/img/${char.folder}/${char.images[0].file}`;
-            }
+        // タイムスタンプ作成 (HH:MM:SS.mmm)
+        const now = new Date();
+        const timestamp = `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}]`;
+
+        const p = document.createElement('p');
+        p.innerText = `${message}${timestamp}`;
+        debugLog.appendChild(p);
+
+        // 常に一番下へスクロール
+        debugLog.scrollTop = debugLog.scrollHeight;
+    },
+
+    // 指定されたキャラターの全衣装画像をプリロードする
+    preloadCharacterImages: function (char) {
+        if (!char || !char.images) return;
+
+        if (!this.preloadContainer) {
+            this.preloadContainer = document.createElement('div');
+            this.preloadContainer.style.display = 'none';
+            document.body.appendChild(this.preloadContainer);
+        }
+
+        char.images.forEach(imgData => {
+            const url = `src/img/${char.folder}/${imgData.file}`;
+
+            // 既にプリロード済みの場合はスキップ
+            if (this.preloadedUrls.has(url)) return;
+            this.preloadedUrls.add(url);
+
+            this.addDebugLog(`プリロード (${char.name} - ${imgData.label})`);
+
+            // 隠し <img> タグを生成してDOMに挿入（ブラウザに強制ダウンロード＆キャッシュ保持させる）
+            const img = new Image();
+            img.src = url;
+            this.preloadContainer.appendChild(img);
         });
     },
 
@@ -692,32 +742,137 @@ const sortEngine = {
     select: function (choice, isReplay = false) {
         if (!this.currentQuestion) return;
 
+        // 進行中のアニメーションがあれば二重クリックを防止
+        if (this.isAnimating && !isReplay) return;
+
+        const [leftNode, rightNode] = this.currentQuestion;
+
+        if (!isReplay) {
+            let clickedName = '';
+            if (choice === 'left') clickedName = leftNode.character.name;
+            else if (choice === 'right') clickedName = rightNode.character.name;
+            else clickedName = '引き分け';
+            this.addDebugLog(`${clickedName}が押された`);
+        }
+
         // 履歴に追加（再実行中でなければ）
         if (!isReplay) {
             this.history.push({ type: 'select', value: choice });
         }
 
-        const [leftNode, rightNode] = this.currentQuestion;
+        // ★ 暫定ランキング精度のための戦績記録
+        leftNode.battles++;
+        rightNode.battles++;
+        // getResultList用の一時アクセス参照をキャラにもたせる（ハック的だが簡単）
+        leftNode.character.__nodeRef = leftNode;
+        rightNode.character.__nodeRef = rightNode;
 
         if (choice === 'left') {
             // 左の勝ち：右を左の子にする
+            leftNode.wins++;
             leftNode.addChild(rightNode);
         } else if (choice === 'right') {
             // 右の勝ち：左を右の子にする
+            rightNode.wins++;
             rightNode.addChild(leftNode);
         } else {
             // 引き分け (スキップ)
+            leftNode.ties++;
+            rightNode.ties++;
             leftNode.addChild(rightNode, true);
         }
 
         // 進捗更新
         this.currentCount++;
 
-        // 再実行中は表示更新しない（最後だけする）
-        if (!isReplay) {
-            this.updateProgress();
-            this.ask();
+        // 再実行中はアニメーションや表示更新をしない（一括で最後にする）
+        if (isReplay) {
+            return;
         }
+
+        // --- ロード＆アニメーション処理 ---
+        this.isAnimating = true;
+
+        // 次の質問を予測して「プリロードだけ」を先に開始する（DOMはまだ書き換えない）
+        const savedSeed = RNG.seed;
+        const nextPair = this.rootNode.getQuestion(this.targetLimit);
+        RNG.seed = savedSeed; // 乱数の状態を元に戻す
+
+        if (nextPair) {
+            // アニメーションしている時間を使ってバックグラウンドで読み込む
+            this.preloadCharacterImages(nextPair[0].character);
+            this.preloadCharacterImages(nextPair[1].character);
+        }
+
+        this.addDebugLog(`アニメーションを再生`);
+
+        const leftImg = document.getElementById('left-img');
+        const rightImg = document.getElementById('right-img');
+
+        // ★改善案2: クリックされた時の「押し込み（プッシュ）」エフェクト
+        if (choice === 'left' && leftImg) leftImg.classList.add('card-push');
+        if (choice === 'right' && rightImg) rightImg.classList.add('card-push');
+
+        // プッシュエフェクトが終わるまで（100ms程）待ってから退場（Leave）アニメーションへ
+        setTimeout(() => {
+            // プッシュ状態を解除
+            if (leftImg) leftImg.classList.remove('card-push');
+            if (rightImg) rightImg.classList.remove('card-push');
+
+            // ★改善案4: 勝者・敗者の退場アニメーションを付与
+            if (choice === 'left') {
+                if (leftImg) leftImg.classList.add('card-leave-winner');
+                if (rightImg) rightImg.classList.add('card-leave-loser');
+            } else if (choice === 'right') {
+                if (leftImg) leftImg.classList.add('card-leave-loser');
+                if (rightImg) rightImg.classList.add('card-leave-winner');
+            } else {
+                // 引き分け時は仲良く下に消える
+                if (leftImg) leftImg.classList.add('card-leave-tie');
+                if (rightImg) rightImg.classList.add('card-leave-tie');
+            }
+
+            // 退場アニメーション完了（約0.3秒）を待ってから、画面を書き換える
+            setTimeout(() => {
+                // 退場状態（透明度0）を維持しているクラスを解除
+                if (leftImg) leftImg.classList.remove('card-leave-winner', 'card-leave-loser', 'card-leave-tie');
+                if (rightImg) rightImg.classList.remove('card-leave-winner', 'card-leave-loser', 'card-leave-tie');
+
+                // ここで本番の次のペア選定が行われ、DOMの中身（名前・画像など）が書き換わる
+                this.updateProgress();
+                this.ask();
+
+                // 新しく描画された画像要素を取得
+                const newLeftImg = document.getElementById('left-img');
+                const newRightImg = document.getElementById('right-img');
+
+                // 新しい画像に「スライドインの準備状態（画面外・透明度0）」のクラスを直付けする
+                if (choice === 'left') {
+                    if (newLeftImg) newLeftImg.classList.add('card-slide-in-prepare-left');
+                    if (newRightImg) newRightImg.classList.add('card-slide-in-prepare-right');
+                } else if (choice === 'right') {
+                    if (newLeftImg) newLeftImg.classList.add('card-slide-in-prepare-left');
+                    if (newRightImg) newRightImg.classList.add('card-slide-in-prepare-right');
+                } else {
+                    if (newLeftImg) newLeftImg.classList.add('card-slide-in-prepare-bottom');
+                    if (newRightImg) newRightImg.classList.add('card-slide-in-prepare-bottom');
+                }
+
+                // ブラウザに一度準備状態を認識させた後、クラスを剥がしてスライドイン（現れる）させる
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        // クラスを剥がすと、改善案1の「弾むようなイージング」に乗って定位置へ戻る
+                        if (newLeftImg) newLeftImg.classList.remove('card-slide-in-prepare-left', 'card-slide-in-prepare-bottom');
+                        if (newRightImg) newRightImg.classList.remove('card-slide-in-prepare-right', 'card-slide-in-prepare-bottom');
+
+                        // スライドイン完了（約0.4秒）後にロック解除
+                        setTimeout(() => {
+                            this.isAnimating = false;
+                        }, 400); // 新しいイージングの時間(0.4s)に合わせる
+                    });
+                });
+            }, 300); // .card-leave-* の transition 時間 (0.3s) に合わせる
+        }, 150); // .card-push の transition 時間 (0.1s + 少しの余韻) に合わせる
     },
 
     // スキップ処理 (Tieと同じ扱いだが、UI上の意味合いが違う)
@@ -866,6 +1021,10 @@ const sortEngine = {
         // 名前表示
         document.getElementById('left-name').innerText = charA.name;
         document.getElementById('right-name').innerText = charB.name;
+
+        // デバッグログ出力
+        this.addDebugLog(`${charA.name}が表示されました`);
+        this.addDebugLog(`${charB.name}が表示されました`);
 
         // インデックスをリセット
         this.currentCostumeIndices = { left: 0, right: 0 };
@@ -1319,6 +1478,10 @@ function initButtonEvents() {
     const btnExcludeRight = document.getElementById('btn-exclude-right');
     if (btnExcludeRight) btnExcludeRight.addEventListener('click', () => sortEngine.exclude('right'));
 
+    // 途中終了アクション
+    const btnFinishEarly = document.getElementById('btn-finish-early');
+    if (btnFinishEarly) btnFinishEarly.addEventListener('click', () => sortEngine.showResult());
+
     // 結果画面のアクション
     const shareBtn = document.getElementById('share-btn');
     if (shareBtn) shareBtn.addEventListener('click', () => sortEngine.shareResult());
@@ -1339,6 +1502,16 @@ function initButtonEvents() {
 
     const restartBtn = document.getElementById('restart-btn');
     if (restartBtn) restartBtn.addEventListener('click', () => location.reload());
+
+    // デバッグ用: F8キーでログコンテナを開閉
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'F8' || e.keyCode === 119) {
+            const debugLog = document.getElementById('debug-log');
+            if (debugLog) {
+                debugLog.classList.toggle('hidden');
+            }
+        }
+    });
 }
 
 function initApp() {

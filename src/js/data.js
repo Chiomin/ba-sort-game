@@ -632,7 +632,7 @@ export const characterData = [
         academy: "ミレニアムサイエンススクール",
         club: "特異現象捜査部",
         images: [
-            { label: "通常", file: "Kei.png" },
+            { label: "通常", file: "Kei.png", offsetX: -5 },
             { label: "通常前", file: "Kei_(Prototype).png" },
             { label: "AMAS", file: "Kei_(AMAS).png" }
 
@@ -2002,5 +2002,27 @@ export const characterData = [
             { label: "通常", file: "Yume.png" },
             { label: "スク水", file: "Yume_(School_Swimsuit).png" }
         ]
-    },
+    }
 ];
+
+const changelogData = [
+    {
+        version: "v1.1",
+        date: "2026/03/03",
+        contents: [
+            "スマートフォン等での結果画面のレイアウト崩れを修正しました。",
+            "途中結果を見れるようになりました。",
+            "アニメーションを追加しました。"
+        ]
+    },
+    {
+        version: "v1.0",
+        date: "2026/02/27",
+        contents: [
+            "リリースされました。",
+            "実装生徒及びそれらに対する衣装、一部のNPC生徒、そしてコラボキャラをソート可能です。"
+        ]
+    }
+];
+
+export { changelogData };

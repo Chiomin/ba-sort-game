@@ -177,12 +177,12 @@
         <div class="modal-content changelog-box">
             <span class="close-modal" id="close-changelog">&times;</span>
             <h2>Changelog</h2>
+
+            <!-- JavaScriptで動的に追加されるアップデート履歴のコンテナ -->
+            <div id="changelog-container"></div>
+
             <div class="changelog-entry">
-                <h3>v1.0</h3>
-                <p>リリースされました。<br>
-                    実装生徒及びそれらに対する衣装、一部のNPC生徒、そしてコラボキャラをソート可能です。
-                </p>
-                <p class="reference-notice">
+                <p class="reference-notice" style="margin-top:20px; border-top: 1px solid #ccc; padding-top:10px;">
                     このサイトは東方キャラソート・MF(<a href="http://readalittle.net/sort/" target="_blank"
                         rel="noopener noreferrer">http://readalittle.net/sort/</a>)を参考に作成されました!
                 </p>
@@ -201,7 +201,7 @@
     <!-- デバッグ用ログパネル (F8でトグル) -->
     <div id="debug-log" class="hidden"></div>
 
-    <script type="module" src="src/js/script.js?v=1.0.3"></script>
+    <script type="module" src="src/js/script.js"></script>
 </body>
 
 </html>

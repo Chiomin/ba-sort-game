@@ -5,7 +5,7 @@
  * - ESModules対応版
  */
 
-import { characterData } from './data.js';
+import { characterData, changelogData } from './data.js';
 
 // ------------------------------------
 // セイバー（Seeded RNG）
@@ -111,64 +111,116 @@ class SortNode {
         return null;
     }
 
-    // 結果表示用に、現在の順位（深さ）順に並んだリストを取得する
-    // 途中経過も表示できるよう、ツリー全体を探索する
-    getResultList(targetRank, result = []) {
-        // ツリー内の全キャラクターを探索する内部関数
+    // 結果表示用にリストを取得する
+    // 途中経過の場合でも、戦績を元に最も精度の高い暫定ランキングを作成する
+    getResultList(targetRank) {
+        let result = [];
+
+        // 1. ツリー全体のノードを全て集める
+        const allNodes = [];
         const traverse = (node) => {
             if (node.character) {
-                result.push({
-                    character: node.character,
-                    rank: node.getRank(),
-                    isTie: node.isTie
-                });
+                allNodes.push(node);
             }
             node.children.forEach(child => traverse(child));
         };
+        // ルートから全探索（ルート自身はcharacterが無いのでスキップされる）
+        traverse(this);
 
-        if (!this.parent) {
-            // Rootから呼ばれた場合は全探索してソートする
-            traverse(this);
-            // ソートアルゴリズムの改善: 
-            // 1. ツリーの深さ(rank)が小さい（上位）ほど偉い
-            // 2. ランクが同じなら「勝率 (勝数 / 試合数)」が高いほうが偉い
-            // 3. 勝率も同じなら「単純な勝利数」が多いほうが偉い
-            result.sort((a, b) => {
-                if (a.rank !== b.rank) {
-                    return a.rank - b.rank; // 昇順 (小さい方が上位)
-                }
-
-                const aNode = a.character ? a.character.__nodeRef : null; // 一時的な参照用
-                const bNode = b.character ? b.character.__nodeRef : null;
-
-                const aBattles = aNode ? aNode.battles : 0;
-                const bBattles = bNode ? bNode.battles : 0;
-                const aWins = aNode ? aNode.wins : 0;
-                const bWins = bNode ? bNode.wins : 0;
-
-                const aWinRate = aBattles > 0 ? (aWins / aBattles) : 0;
-                const bWinRate = bBattles > 0 ? (bWins / bBattles) : 0;
-
-                if (aWinRate !== bWinRate) {
-                    return bWinRate - aWinRate; // 降順 (大きい方が上位)
-                }
-
-                return bWins - aWins; // 降順
-            });
-
-            // 参照用プロパティのお掃除
-            result.forEach(item => {
-                if (item.character && item.character.__nodeRef) {
-                    delete item.character.__nodeRef;
-                }
-            });
-
-            // 表示上限を超えないように切り出す
-            // 同率順位が多数いる場合は targetRank を超えてしまうこともあるが、単純にスライスする
-            return result.slice(0, targetRank);
+        // 2. 「すでに順位が確定している絶対的な鎖（Root -> child[0] -> child[0]...）」を辿る
+        const lockedNodes = new Set();
+        let curr = this;
+        // トーナメントソートの性質上、常に勝ち続けていて子が1人のみの状態は「完全に順位が確定している」部分
+        while (curr.children.length === 1) {
+            curr = curr.children[0];
+            if (curr.character) {
+                lockedNodes.add(curr);
+                result.push(curr);
+            }
         }
 
-        return result;
+        // 3. それ以外のノード（未確定プール）を取得
+        // この時点で1度も試合をしていないキャラクターは圏外として扱う（リストに入れない）
+        const undecidedNodes = allNodes.filter(n => !lockedNodes.has(n) && (n.battles || 0) > 0);
+
+        // 4. 未確定プールをヒューリスティックなスコア（ポイント、勝率、負け数）を用いてソート
+        undecidedNodes.sort((a, b) => {
+            const aWins = a.wins || 0;
+            const bWins = b.wins || 0;
+            const aTies = a.ties || 0;
+            const bTies = b.ties || 0;
+            const aBattles = a.battles || 0;
+            const bBattles = b.battles || 0;
+
+            const aLosses = aBattles - aWins - aTies;
+            const bLosses = bBattles - bWins - bTies;
+
+            // ポイント: 勝ち=3点、引き分け=1点
+            const aPts = (aWins * 3) + (aTies * 1);
+            const bPts = (bWins * 3) + (bTies * 1);
+
+            if (aPts !== bPts) return bPts - aPts; // ポイント順（降順）
+
+            // 勝率
+            const aRate = aBattles > 0 ? aWins / aBattles : 0;
+            const bRate = bBattles > 0 ? bWins / bBattles : 0;
+
+            if (aRate !== bRate) return bRate - aRate; // 勝率順（降順）
+
+            // 負け数（少ない方が偉い）
+            if (aLosses !== bLosses) return aLosses - bLosses; // 負け数（昇順）
+
+            // それでも同じ場合は単純な勝数
+            if (aWins !== bWins) return bWins - aWins;
+
+            return 0; // 完全に同着
+        });
+
+        // 5. 確定済みリストの末尾に、未確定リストを結合する
+        const combined = [...result, ...undecidedNodes];
+
+        // 6. UI表示用のランク（順位）を振り直す
+        const finalResult = [];
+        let currentDisplayRank = 1;
+
+        for (let i = 0; i < combined.length; i++) {
+            const node = combined[i];
+
+            // 確定済みリストの中身は問答無用でそのままの順位（i + 1）にする
+            if (i < result.length) {
+                currentDisplayRank = i + 1;
+            } else {
+                // 未確定エリアの順位付け（同着判定処理）
+                if (i > 0) {
+                    const prev = combined[i - 1];
+                    const pWins = prev.wins || 0, cWins = node.wins || 0;
+                    const pTies = prev.ties || 0, cTies = node.ties || 0;
+                    const pBattles = prev.battles || 0, cBattles = node.battles || 0;
+                    const pLosses = pBattles - pWins - pTies;
+                    const cLosses = cBattles - cWins - cTies;
+                    const pPts = (pWins * 3) + (pTies * 1);
+                    const cPts = (cWins * 3) + (cTies * 1);
+                    const pRate = pBattles > 0 ? pWins / pBattles : 0;
+                    const cRate = cBattles > 0 ? cWins / cBattles : 0;
+
+                    const isSameStats = (pPts === cPts && pRate === cRate && pLosses === cLosses);
+
+                    // 前のキャラが確定済みエリアだったり、ステータスが違ったりすれば順位を＋１
+                    if (i === result.length || !isSameStats) {
+                        currentDisplayRank = i + 1;
+                    }
+                }
+            }
+
+            finalResult.push({
+                character: node.character,
+                rank: currentDisplayRank,
+                isTie: node.isTie
+            });
+        }
+
+        // 指定順位分だけを返す
+        return finalResult.slice(0, targetRank);
     }
 
     // 自分の順位を計算（引き分け考慮）
@@ -1411,7 +1463,30 @@ function initChangelogModal() {
     const versionBadge = document.getElementById('version-info');
     const changelogModal = document.getElementById('changelog-modal');
     const closeChangelog = document.getElementById('close-changelog');
+    const changelogContainer = document.getElementById('changelog-container');
 
+    // 1. 最新バージョンのバッジ表示をデータから自動適用
+    if (versionBadge && changelogData.length > 0) {
+        versionBadge.innerText = changelogData[0].version; // 配列の先頭（最新）を表示
+    }
+
+    // 2. 更新履歴UIの動的生成
+    if (changelogContainer && changelogData) {
+        let htmlStr = '';
+        changelogData.forEach(item => {
+            htmlStr += `<div class="changelog-entry">`;
+            htmlStr += `<h3>${item.version} <span style="font-size:12px; font-weight:normal; color:#666; margin-left:8px;">${item.date || ''}</span></h3>`;
+            htmlStr += `<ul>`;
+            item.contents.forEach(text => {
+                htmlStr += `<li>${text}</li>`;
+            });
+            htmlStr += `</ul>`;
+            htmlStr += `</div>`;
+        });
+        changelogContainer.innerHTML = htmlStr;
+    }
+
+    // 3. モーダル開閉イベント
     if (versionBadge && changelogModal) {
         versionBadge.addEventListener('click', () => {
             changelogModal.classList.remove('hidden');
